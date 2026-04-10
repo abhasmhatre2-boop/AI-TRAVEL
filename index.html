@@ -162,41 +162,51 @@
             <h2 id="txt-modal-title" style="margin-bottom: 40px;">Expedition Details</h2>
             
             <form id="genForm">
-                <label>Journey Timeline & Origin</label>
-<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 30px;">
-    <div>
-        <label style="font-size: 0.5rem; opacity: 0.6;">Departure Date</label>
-        <input type="date" id="startDate" required style="margin-bottom: 0;">
+    <label>Journey Timeline & Origin</label>
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 30px;">
+        <div>
+            <label style="font-size: 0.5rem; opacity: 0.6;">Departure Date</label>
+            <input type="date" id="startDate" required style="margin-bottom: 0;">
+        </div>
+        <div>
+            <label style="font-size: 0.5rem; opacity: 0.6;">Departure City (Origin)</label>
+            <input type="text" id="origin" placeholder="MUMBAI" required style="margin-bottom: 0;">
+        </div>
     </div>
-    <div>
-        <label style="font-size: 0.5rem; opacity: 0.6;">Departure City (Origin)</label>
-        <input type="text" id="origin" placeholder="MUMBAI" required style="margin-bottom: 0;">
+
+    <label>Target Destination</label>
+    <input type="text" id="dest" placeholder="DUBAI" required>
+
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 30px;">
+        <div>
+            <label>Stay Duration (Days)</label>
+            <input type="number" id="dur" value="3" min="1" style="margin-bottom: 0;">
+        </div>
+        <div>
+            <label>Total Guests</label>
+            <input type="number" id="passengers" value="1" min="1" style="margin-bottom: 0;">
+        </div>
     </div>
-</div>
 
-<label>Target Destination</label>
-<input type="text" id="dest" placeholder="DUBAI" required>
+    <label>Financial Allocation</label>
+    <div style="display: flex; gap: 15px; margin-bottom: 35px;">
+        <select id="currency" style="width: 35%; margin-bottom: 0;">
+            <option value="₹">₹ (INR)</option>
+            <option value="$">$ (USD)</option>
+            <option value="€">€ (EUR)</option>
+        </select>
+        <input type="number" id="budgetAmount" placeholder="Ex: 50,000" style="margin-bottom: 0;">
+    </div>
 
-                <label>Financial Allocation</label>
-                <div style="display: flex; gap: 10px; margin-bottom: 30px;">
-                    <select id="currency" style="width: 35%; margin-bottom: 0;">
-                        <option value="INR">₹ (INR)</option>
-                        <option value="USD">$ (USD)</option>
-                        <option value="EUR">€ (EUR)</option>
-                    </select>
-                    <input type="number" id="budgetAmount" placeholder="Target Total" style="margin-bottom: 0;">
-                </div>
+    <label>Travel Priority</label>
+    <select id="style">
+        <option value="Budget">Strict Budget (Economic)</option>
+        <option value="Moderate" selected>Balanced (Value for Money)</option>
+        <option value="Luxury">Premium (High-End)</option>
+    </select>
 
-                <label>Travel Priority</label>
-                <select id="style">
-                    <option value="Budget">Strict Budget (Economic)</option>
-                    <option value="Moderate" selected>Balanced (Value for Money)</option>
-                    <option value="Luxury">Premium (High-End)</option>
-                </select>
-
-                <button type="submit" class="btn" style="width: 100%;">Manifest Journey</button>
-            </form>
-
+    <button type="submit" class="btn" style="width: 100%;">Manifest Journey</button>
+</form>
             <div id="loadingUI" class="hidden">
                 <div class="loader">SYNCHRONIZING WITH ORACLE...</div>
             </div>
@@ -269,12 +279,12 @@
             document.getElementById('genForm').classList.add('hidden');
             document.getElementById('loadingUI').classList.remove('hidden');
 
-            const payload = {
+     const payload = {
     origin: document.getElementById('origin').value,
     destination: document.getElementById('dest').value,
-    departureDate: document.getElementById('startDate').value, // <--- THIS IS THE CRITICAL ADDITION
-    duration: document.getElementById('dur').value,
-    passengers: document.getElementById('passengers').value,
+    departureDate: document.getElementById('startDate').value,
+    duration: document.getElementById('dur').value,      // <--- Grabs Stay Duration
+    passengers: document.getElementById('passengers').value, // <--- Grabs Guest Count
     budgetType: document.getElementById('style').value,
     maxBudget: document.getElementById('budgetAmount').value,
     currency: document.getElementById('currency').value
