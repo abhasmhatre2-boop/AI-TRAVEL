@@ -24,7 +24,7 @@ CORS(app)
 
 # --- 2. CLOUD ENVIRONMENT VARIABLES ---
 # These will be set in the Render.com dashboard under 'Environment'
-GROQ_API_KEY = os.getenv("GROQ_API_KEY", "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")
+GROQ_API_KEY = os.getenv("GROQ_API_KEY", "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")
 DB_HOST = os.getenv("DB_HOST", "gateway01.ap-southeast-1.prod.aws.tidbcloud.com")
 DB_USER = os.getenv("DB_USER", "3ckvtyMQiMcjj6o.root")
 DB_PASS = os.getenv("DB_PASS", "W1F1QQ3NPZW4KWKR")
