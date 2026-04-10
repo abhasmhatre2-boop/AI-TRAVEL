@@ -169,13 +169,22 @@
                     <div><label>Guests</label><input type="number" id="passengers" value="1"></div>
                 </div>
 
-                <label>Tier</label>
-                <select id="style">
-                    <option value="Backpacker">Backpacker</option>
-                    <option value="Moderate" selected>Moderate</option>
-                    <option value="Luxury">Luxury</option>
-                </select>
+                <label>Target Budget (Total)</label>
+<div style="display: flex; gap: 10px;">
+    <select id="currency" style="width: 30%; margin-bottom: 0;">
+        <option value="INR">₹ (INR)</option>
+        <option value="USD">$ (USD)</option>
+        <option value="EUR">€ (EUR)</option>
+    </select>
+    <input type="number" id="budgetAmount" placeholder="e.g. 50000" style="margin-bottom: 0;">
+</div>
 
+<label style="margin-top: 20px;">Travel Priority</label>
+<select id="style">
+    <option value="Budget">Strict Budget (Economic)</option>
+    <option value="Moderate" selected>Balanced (Value for Money)</option>
+    <option value="Luxury">Premium (High-End)</option>
+</select>
                 <button type="submit" class="btn" style="width: 100%;">Manifest Journey</button>
             </form>
 
@@ -252,12 +261,14 @@
             document.getElementById('loadingUI').classList.remove('hidden');
 
             const payload = {
-                origin: document.getElementById('origin').value,
-                destination: document.getElementById('dest').value,
-                duration: document.getElementById('dur').value,
-                passengers: document.getElementById('passengers').value,
-                budgetType: document.getElementById('style').value
-            };
+    origin: document.getElementById('origin').value,
+    destination: document.getElementById('dest').value,
+    duration: document.getElementById('dur').value,
+    passengers: document.getElementById('passengers').value,
+    budgetType: document.getElementById('style').value,
+    maxBudget: document.getElementById('budgetAmount').value, // NEW
+    currency: document.getElementById('currency').value      // NEW
+};
 
             fetch('https://ai-travel-p3rw.onrender.com/api/generate_trip', {
                 method: 'POST',
@@ -266,6 +277,8 @@
             })
             .then(res => res.json())
             .then(data => {
+                const selectedCurrency = document.getElementById('currency').value === 'INR' ? '₹' : '$';
+document.getElementById('costTotal').innerText = `${selectedCurrency}${fin.total || '-'}`;
                 const ai = JSON.parse(data.itinerary);
                 document.getElementById('mainUI').style.display = 'none';
                 document.getElementById('resultUI').classList.remove('hidden');
