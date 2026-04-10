@@ -13,6 +13,38 @@ from flask_cors import CORS
 from groq import Groq
 import mysql.connector
 from mysql.connector import Error
+import requests
+import os
+
+def get_live_flight_price(origin, destination, date):
+    api_key = os.getenv("SERPAPI_KEY")
+    url = "https://serpapi.com/search.json"
+    
+    params = {
+        "engine": "google_flights",
+        "departure_id": origin,
+        "arrival_id": destination,
+        "outbound_date": date,
+        "currency": "INR",
+        "hl": "en",
+        "api_key": api_key
+    }
+
+    try:
+        response = requests.get(url, params=params)
+        data = response.json()
+        
+        # Grab the first (cheapest) flight price
+        best_flight = data.get('best_flights', [{}])[0]
+        price = best_flight.get('price', 'N/A')
+        
+        # Create a deep link for the user
+        booking_url = f"https://www.google.com/travel/flights?q=Flights%20to%20{destination}%20from%20{origin}%20on%20{date}"
+        
+        return price, booking_url
+    except Exception as e:
+        print(f"SerpApi Error: {e}")
+        return "N/A", "#"
 
 # --- 1. SYSTEM LOGGING & CONFIG ---
 logging.basicConfig(level=logging.INFO)
@@ -91,30 +123,46 @@ def health():
 @app.route('/api/generate_trip', methods=['POST'])
 def generate_trip():
     """
-    The main engine: 
-    1. Performs cost estimation
-    2. Generates AI Itinerary 
-    3. Saves to Cloud Database
+    UPGRADED ENGINE: 
+    1. Fetches REAL flight data via SerpApi
+    2. Performs secondary cost estimation
+    3. Generates AI Itinerary with live links
+    4. Saves to Cloud Database
     """
     data = request.json
-    origin = data.get('origin', 'Mumbai')
-    dest = data.get('destination', 'Paris')
+    origin = data.get('origin', 'BOM') # API works best with Airport Codes like BOM, DXB
+    dest = data.get('destination', 'DXB')
     dur = int(data.get('duration', 3))
     pax = int(data.get('passengers', 1))
     style = data.get('budgetType', 'Moderate')
-    
-    logger.info(f"STARTING MANIFEST: {dest} for {pax} people")
+    travel_date = data.get('departureDate') # <-- NEW: From your date picker
 
-    # Step A: Financial Analysis
+    logger.info(f"STARTING LIVE MANIFEST: {dest} for {pax} people on {travel_date}")
+
+    # STEP A: REAL-TIME MARKET DISCOVERY
+    # Fetch actual flight price and a booking link
+    real_flight_price, booking_link = get_live_flight_price(origin, dest, travel_date)
+
+    # STEP B: SECONDARY ECONOMICS (Hotels/Food)
+    # We still use your calculator for the rest of the trip
     finances = calculate_trip_economics(style, dur, pax)
+    
+    # Overwrite the 'airfare' with the real price we just found
+    if real_flight_price != "N/A":
+        finances['airfare'] = real_flight_price
 
-    # Step B: AI Prompt Engineering
+    # STEP C: AI PROMPT ENGINEERING (Updated with Live Data)
     prompt = f"""
     You are a luxury travel agent. Design a bespoke {dur}-day itinerary for {dest} starting from {origin}.
-    Travel Style: {style}. Total Estimated Budget: {finances['total']}.
+    Travel Style: {style}. 
+    
+    CRITICAL LIVE DATA:
+    - Use this real flight price: {finances['airfare']}
+    - Use this booking link for the button: {booking_link}
     
     Return ONLY a JSON object with this exact structure:
     {{
+      "booking_url": "{booking_link}",
       "financials": {{
         "flights": "{finances['airfare']}",
         "hotels": "{finances['lodging']}",
@@ -124,15 +172,17 @@ def generate_trip():
       "itinerary": [
         {{
           "day": 1,
-          "theme": "A creative title for the day",
-          "morning": "Detailed luxury morning activity string",
-          "afternoon": "Sophisticated afternoon activity string",
-          "evening": "Premium night activity string"
+          "theme": "A creative title",
+          "morning": "Activity description",
+          "afternoon": "Activity description",
+          "evening": "Activity description"
         }}
       ]
     }}
     """
 
+    # ... Your existing code to call Groq/LLM goes here ...
+    # Make sure you handle the database save at the end!
     try:
         # Step C: AI Inference
         response = client.chat.completions.create(
