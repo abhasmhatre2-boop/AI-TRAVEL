@@ -462,8 +462,7 @@
                 
                 document.getElementById('rDest').innerText = payload.destination;
                 document.getElementById('rMeta').innerText = `${payload.duration} DAYS • FROM ${payload.origin}`;
-                document.getElementById('weatherText').innerText = ai.weather_advice || ai.weather_report || "Conditions syncing with local stations...";
-                
+                document.getElementById('weatherText').innerText = ai.weather_advice || data.raw_weather || "Standard seasonal conditions.";
                 document.getElementById('costFlight').innerText = `${curSym}${fin.flights || fin.airfare || '-'}`;
                 document.getElementById('costHotel').innerText = `${curSym}${fin.hotels || fin.lodging || '-'}`;
                 document.getElementById('costDaily').innerText = `${curSym}${fin.activities || fin.spending || '-'}`;

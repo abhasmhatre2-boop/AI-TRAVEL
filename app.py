@@ -231,8 +231,11 @@ def generate_trip():
             db.close()
             logger.info("Trip successfully archived to TiDB Cloud.")
 
-        return jsonify({"status": "success", "itinerary": itinerary_json})
-
+        return jsonify({
+            "status": "success", 
+            "itinerary": itinerary_json, 
+            "raw_weather": dest_weather 
+        })
     except Exception as e:
         logger.error(f"ENGINE ERROR: {e}")
         return jsonify({"status": "error", "message": str(e)}), 500
