@@ -3,146 +3,132 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TRIP.AI | The Absolute Travel Manifest</title>
+    <title>TRIP.AI | Global Expedition Manifest</title>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script src="https://unpkg.com/globe.gl"></script>
     <script src="https://unpkg.com/topojson-client"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&family=Playfair+Display:ital,wght@0,700;1,700&display=swap" rel="stylesheet">
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@200;400;700&family=Playfair+Display:ital,wght@0,700;1,700&display=swap" rel="stylesheet">
 
     <style>
         :root {
-            --gold: #c5a059;
-            --dark: #0a0a0b;
-            --slate: #161618;
-            --accent: #2563eb;
-            --glass: rgba(255, 255, 255, 0.03);
-            --border: rgba(255, 255, 255, 0.08);
+            --gold: #d4af37;
+            --dark: #050505;
+            --glass: rgba(255, 255, 255, 0.05);
+            --border: rgba(255, 255, 255, 0.1);
         }
 
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { 
             background-color: var(--dark); 
             color: #fff; 
-            font-family: 'Inter', sans-serif; 
+            font-family: 'Montserrat', sans-serif; 
             overflow-x: hidden;
             scroll-behavior: smooth;
         }
 
-        h1, h2, h3, .serif { font-family: 'Playfair Display', serif; }
+        h1, h2, h3 { font-family: 'Playfair Display', serif; }
 
-        /* NAVIGATION */
+        /* NAVIGATION BAR */
         nav {
             display: flex; justify-content: space-between; align-items: center;
-            padding: 25px 6%; position: fixed; width: 100%; z-index: 1000;
-            background: linear-gradient(to bottom, rgba(10,10,11,0.9), transparent);
-            backdrop-filter: blur(20px); border-bottom: 1px solid var(--border);
+            padding: 20px 6%; position: fixed; width: 100%; z-index: 1000;
+            background: rgba(0,0,0,0.8); backdrop-filter: blur(15px); border-bottom: 1px solid var(--border);
         }
-        .logo { font-size: 1.2rem; letter-spacing: 5px; text-transform: uppercase; color: var(--gold); font-weight: 800; }
+        .logo { font-size: 1.4rem; letter-spacing: 6px; font-weight: 700; color: var(--gold); }
+        
+        .nav-controls { display: flex; align-items: center; gap: 20px; }
+        
+        select.lang-select {
+            background: transparent; color: #fff; border: 1px solid var(--border);
+            padding: 5px 10px; font-size: 0.7rem; text-transform: uppercase; cursor: pointer;
+        }
 
-        /* HERO */
+        /* LOGIN BUTTON */
+        #google-login-btn { transform: scale(0.9); }
+
+        /* HERO SECTION */
         .hero {
             height: 100vh; display: flex; flex-direction: column;
             justify-content: center; align-items: center; text-align: center;
             background: radial-gradient(circle at center, #111 0%, #000 100%);
         }
-        .hero h1 { font-size: clamp(3rem, 10vw, 6rem); line-height: 1; margin-bottom: 30px; }
-        .hero p { color: var(--gold); letter-spacing: 5px; text-transform: uppercase; font-size: 0.7rem; margin-bottom: 50px; }
+        .hero h1 { font-size: clamp(3rem, 10vw, 7rem); line-height: 1; margin-bottom: 20px; }
+        .hero p { color: var(--gold); letter-spacing: 8px; text-transform: uppercase; font-size: 0.75rem; margin-bottom: 40px; }
 
         .btn {
             padding: 18px 45px; border: 1px solid var(--gold);
             background: transparent; color: var(--gold); cursor: pointer;
             text-transform: uppercase; letter-spacing: 3px; font-size: 0.7rem;
-            transition: 0.4s; font-weight: 600;
+            transition: 0.4s ease;
         }
-        .btn:hover { background: var(--gold); color: var(--dark); box-shadow: 0 0 30px rgba(197, 160, 89, 0.4); }
+        .btn:hover { background: var(--gold); color: #000; box-shadow: 0 0 30px rgba(212, 175, 55, 0.3); }
 
-        /* GLOBE */
-        .globe-wrap { padding: 80px 0; background: #000; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
-        #globeViz { cursor: grab; }
-
-        /* MODAL ARCHITECTURE */
+        /* GLOBE & CONTENT */
+        .globe-container { width: 100%; height: 700px; background: #000; border-top: 1px solid var(--border); }
+        
+        /* MODAL & FORM */
         .modal {
             display: none; position: fixed; inset: 0; z-index: 2000;
-            background: rgba(0,0,0,0.85); backdrop-filter: blur(20px);
+            background: rgba(0,0,0,0.95); backdrop-filter: blur(20px);
             align-items: center; justify-content: center;
         }
         .modal.active { display: flex; }
-        .m-content {
-            background: var(--slate); padding: 60px; width: 95%; max-width: 550px;
-            border: 1px solid var(--border); position: relative;
-        }
-        .close-btn { position: absolute; top: 30px; right: 30px; cursor: pointer; font-size: 2rem; color: #444; }
+        .m-content { background: #111; padding: 50px; width: 90%; max-width: 550px; border: 1px solid var(--border); position: relative; }
+        .close-btn { position: absolute; top: 20px; right: 25px; cursor: pointer; font-size: 2rem; color: #444; }
 
-        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-        label { display: block; font-size: 0.6rem; color: var(--gold); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 8px; }
         input, select {
             width: 100%; background: transparent; border: none; border-bottom: 1px solid #333;
             color: #fff; padding: 12px 0; margin-bottom: 30px; font-size: 1rem;
         }
         input:focus { border-color: var(--gold); outline: none; }
+        label { display: block; font-size: 0.6rem; color: var(--gold); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 5px; }
 
-        /* BUDGET DASHBOARD (RESULTS) */
-        .budget-grid {
-            display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px;
-            margin-bottom: 60px; background: var(--glass); padding: 30px;
-            border: 1px solid var(--border); border-radius: 15px;
-        }
-        .budget-item { text-align: center; }
-        .budget-item small { display: block; color: var(--gold); font-size: 0.6rem; letter-spacing: 2px; margin-bottom: 10px; }
-        .budget-item h3 { font-size: 1.5rem; }
-
-        /* ITINERARY FLOW */
+        /* RESULTS AREA */
         .results-page { padding: 120px 8%; max-width: 1300px; margin: 0 auto; }
-        .day-row {
-            display: grid; grid-template-columns: 180px 1fr; gap: 60px;
-            padding: 80px 0; border-top: 1px solid var(--border);
+        .budget-grid {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px;
+            margin-bottom: 60px; background: var(--glass); padding: 30px; border: 1px solid var(--border);
         }
-        .day-num { font-size: 5rem; color: var(--gold); opacity: 0.2; line-height: 1; }
-        .day-theme { font-size: 1.4rem; font-style: italic; margin-top: 10px; }
+        .budget-item small { display: block; color: var(--gold); font-size: 0.6rem; letter-spacing: 2px; margin-bottom: 10px; }
+
+        .day-row { display: grid; grid-template-columns: 150px 1fr; gap: 50px; padding: 60px 0; border-top: 1px solid var(--border); }
+        .day-num { font-size: 5rem; color: var(--gold); opacity: 0.1; }
+        .day-theme { font-style: italic; font-size: 1.4rem; margin-top: 10px; font-family: 'Playfair Display'; }
         
         .act-group { border-left: 1px solid #222; padding-left: 40px; }
-        .act-block { margin-bottom: 35px; }
-        .act-block small { color: var(--gold); letter-spacing: 2px; font-size: 0.6rem; text-transform: uppercase; display: block; margin-bottom: 10px; }
-        .act-block p { font-weight: 300; line-height: 1.8; color: #bbb; }
-
-        /* ARCHIVE DASHBOARD */
-        .archive-section { padding: 80px 6%; background: #000; }
-        .archive-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 25px; margin-top: 40px; }
-        .archive-card { padding: 30px; border: 1px solid var(--border); position: relative; background: rgba(255,255,255,0.01); transition: 0.3s; }
-        .archive-card:hover { border-color: var(--gold); transform: translateY(-5px); }
-        .delete-btn { position: absolute; top: 15px; right: 15px; color: #ff4444; font-size: 0.6rem; cursor: pointer; letter-spacing: 1px; }
-
-        /* LOADERS */
-        .loader-wrap { text-align: center; }
-        .bar { width: 100%; height: 2px; background: #111; position: relative; overflow: hidden; margin-top: 20px; }
-        .bar::after { content: ''; position: absolute; left: -100%; width: 100%; height: 100%; background: var(--gold); animation: load 2s infinite linear; }
-        @keyframes load { to { left: 100%; } }
+        .act-block { margin-bottom: 30px; }
+        .act-block p { font-weight: 200; color: #aaa; line-height: 1.8; }
 
         .hidden { display: none !important; }
+        .loader { text-align: center; color: var(--gold); letter-spacing: 5px; font-size: 0.6rem; }
     </style>
 </head>
 <body>
 
     <nav>
         <div class="logo">TRIP.AI</div>
-        <button class="btn open-modal" style="padding: 10px 25px; font-size: 0.6rem;">Initialize</button>
+        <div class="nav-controls">
+            <select class="lang-select" onchange="changeLanguage(this.value)">
+                <option value="en">English</option>
+                <option value="hi">हिन्दी</option>
+                <option value="es">Español</option>
+            </select>
+            <div id="google-login-btn"></div>
+        </div>
     </nav>
 
     <div id="mainUI">
         <section class="hero">
-            <p>High-Fidelity AI Intelligence</p>
-            <h1>Defining the<br>Global Horizon.</h1>
-            <button class="btn open-modal" style="margin-top: 40px;">Begin Configuration</button>
+            <p id="txt-subhero">Intelligence in Global Travel</p>
+            <h1 id="txt-hero">The World,<br>By Design.</h1>
+            <button class="btn open-modal" id="txt-btn-main">Begin Configuration</button>
         </section>
 
-        <section class="globe-wrap">
+        <section class="globe-container">
             <div id="globeViz"></div>
-        </section>
-
-        <section class="archive-section">
-            <h2 class="serif" style="font-size: 2.5rem;">Archive Vault</h2>
-            <div id="archiveDisplay" class="archive-grid">Loading vault logs...</div>
         </section>
     </div>
 
@@ -154,7 +140,7 @@
             <div class="budget-grid">
                 <div class="budget-item"><small>Est. Airfare</small><h3 id="costFlight">-</h3></div>
                 <div class="budget-item"><small>Est. Lodging</small><h3 id="costHotel">-</h3></div>
-                <div class="budget-item"><small>Daily Allowance</small><h3 id="costDaily">-</h3></div>
+                <div class="budget-item"><small>Daily Spending</small><h3 id="costDaily">-</h3></div>
                 <div class="budget-item"><small>Total Budget</small><h3 id="costTotal" style="color: var(--gold);">-</h3></div>
             </div>
 
@@ -169,91 +155,97 @@
     <div id="modalUI" class="modal">
         <div class="m-content">
             <span class="close-btn" onclick="closeModal()">&times;</span>
-            <h2 class="serif" style="font-size: 2.2rem; margin-bottom: 40px;">Expedition Details</h2>
+            <h2 id="txt-modal-title" style="margin-bottom: 40px;">Expedition Details</h2>
             
             <form id="genForm">
-                <div class="form-row">
-                    <div>
-                        <label>Origin</label>
-                        <input type="text" id="origin" placeholder="CITY" required>
-                    </div>
-                    <div>
-                        <label>Destination</label>
-                        <input type="text" id="dest" placeholder="CITY" required>
-                    </div>
+                <label>Origin</label>
+                <input type="text" id="origin" placeholder="CITY" required>
+                
+                <label>Destination</label>
+                <input type="text" id="dest" placeholder="CITY" required>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                    <div><label>Days</label><input type="number" id="dur" value="3"></div>
+                    <div><label>Guests</label><input type="number" id="passengers" value="1"></div>
                 </div>
 
-                <div class="form-row">
-                    <div>
-                        <label>Duration (Days)</label>
-                        <input type="number" id="dur" value="3">
-                    </div>
-                    <div>
-                        <label>Passengers</label>
-                        <input type="number" id="passengers" value="1">
-                    </div>
-                </div>
-
-                <label>Vibe / Philosophy</label>
+                <label>Tier</label>
                 <select id="style">
-                    <option>Backpacker</option>
-                    <option selected>Moderate</option>
-                    <option>Luxury</option>
+                    <option value="Backpacker">Backpacker</option>
+                    <option value="Moderate" selected>Moderate</option>
+                    <option value="Luxury">Luxury</option>
                 </select>
 
-                <button type="submit" class="btn" style="width: 100%; margin-top: 10px;">Manifest Plan</button>
+                <button type="submit" class="btn" style="width: 100%;">Manifest Journey</button>
             </form>
 
             <div id="loadingUI" class="hidden">
-                <div class="loader-wrap">
-                    <p style="letter-spacing: 5px; font-size: 0.6rem; color: var(--gold);">SYNCHRONIZING WITH ORACLE</p>
-                    <div class="bar"></div>
-                </div>
+                <div class="loader">SYNCHRONIZING WITH ORACLE...</div>
             </div>
         </div>
     </div>
 
     <script>
-        // GLOBE CONFIG
+        // 1. LANGUAGE TRANSLATION MAP
+        const translations = {
+            en: { hero: "The World,<br>By Design.", sub: "Intelligence in Global Travel", btn: "Begin Configuration", modal: "Expedition Details" },
+            hi: { hero: "दुनिया,<br>आपकी पसंद।", sub: "वैश्विक यात्रा में बुद्धिमत्ता", btn: "शुरू करें", modal: "यात्रा का विवरण" },
+            es: { hero: "El Mundo,<br>Por Diseño.", sub: "Inteligencia en Viajes Globales", btn: "Comenzar", modal: "Detalles de Expedición" }
+        };
+
+        function changeLanguage(lang) {
+            document.getElementById('txt-hero').innerHTML = translations[lang].hero;
+            document.getElementById('txt-subhero').innerText = translations[lang].sub;
+            document.getElementById('txt-btn-main').innerText = translations[lang].btn;
+            document.getElementById('txt-modal-title').innerText = translations[lang].modal;
+        }
+
+        // 2. GOOGLE LOGIN INITIALIZATION
+        window.onload = function () {
+            google.accounts.id.initialize({
+                client_id: "YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com", // Replace this
+                callback: handleCredentialResponse
+            });
+            google.accounts.id.renderButton(
+                document.getElementById("google-login-btn"),
+                { theme: "outline", size: "large" }
+            );
+        };
+
+        function handleCredentialResponse(response) {
+            console.log("Encoded JWT ID token: " + response.credential);
+            alert("Login Successful! Authenticated via Google.");
+        }
+
+        // 3. GLOBE CONFIG
         fetch('https://unpkg.com/world-atlas/countries-110m.json').then(res => res.json()).then(data => {
             const world = Globe()(document.getElementById('globeViz'))
-                .globeImageUrl('https://unpkg.com/three-globe/example/img/earth-dark.jpg')
+                .globeImageUrl('https://unpkg.com/three-globe/example/img/earth-blue-marble.jpg')
+                .bumpImageUrl('https://unpkg.com/three-globe/example/img/earth-topology.png')
                 .backgroundColor('rgba(0,0,0,0)')
-                .showAtmosphere(true).atmosphereColor('#c5a059')
+                .showAtmosphere(true).atmosphereColor('#3a82f6')
                 .polygonsData(topojson.feature(data, data.objects.countries).features)
-                .polygonCapColor(() => 'rgba(197, 160, 89, 0.03)').polygonStrokeColor(() => '#222')
-                .onPolygonClick(p => { document.getElementById('dest').value = p.properties.name.toUpperCase(); openModal(); });
-            world.controls().autoRotate = true; world.width(window.innerWidth).height(600);
+                .polygonCapColor(() => 'rgba(0,0,0,0)')
+                .polygonStrokeColor(() => 'rgba(255,255,255,0.2)')
+                .onPolygonClick(p => { 
+                    document.getElementById('dest').value = p.properties.name.toUpperCase(); 
+                    openModal(); 
+                });
+            world.controls().autoRotate = true; world.width(window.innerWidth).height(700);
+            
+            fetch('https://raw.githubusercontent.com/vasturiano/globe.gl/master/example/datasets/ne_110m_populated_places_simple.geojson')
+                .then(res => res.json()).then(places => {
+                    world.labelsData(places.features)
+                        .labelLat(d => d.properties.latitude).labelLng(d => d.properties.longitude)
+                        .labelText(d => d.properties.name).labelSize(1.0).labelColor(() => 'white');
+                });
         });
 
-        // DASHBOARD ARCHIVE
-        function loadArchive() {
-            // UPDATED: Now points to Render
-            fetch('https://ai-travel-p3rw.onrender.com/api/past_trips').then(res => res.json()).then(data => {
-                document.getElementById('archiveDisplay').innerHTML = data.map(t => `
-                    <div class="archive-card">
-                        <span class="delete-btn" onclick="removeEntry(${t.id}, event)">REMOVE</span>
-                        <small style="color:var(--gold)">${t.duration} DAY MISSION</small>
-                        <h3 class="serif" style="margin-top:10px;">${t.destination}</h3>
-                        <p style="font-size:1.1rem; margin-top:20px; color:var(--gold);">${t.currency || '₹'}${Number(t.total_est_cost).toLocaleString()}</p>
-                    </div>
-                `).join('') || "Archive is empty.";
-            });
-        }
-
-        function removeEntry(id, e) {
-            e.stopPropagation();
-            if(!confirm("Purge this manifest from the vault?")) return;
-            // UPDATED: Now points to Render
-            fetch(`https://ai-travel-p3rw.onrender.com/api/delete_trip/${id}`, { method: 'DELETE' }).then(() => loadArchive());
-        }
-
-        // UI ACTIONS
+        // 4. CORE ENGINE LOGIC
         function openModal() { document.getElementById('modalUI').classList.add('active'); }
         function closeModal() { document.getElementById('modalUI').classList.remove('active'); }
         document.querySelectorAll('.open-modal').forEach(b => b.onclick = openModal);
 
-        // CORE LOGIC
         document.getElementById('genForm').onsubmit = (e) => {
             e.preventDefault();
             document.getElementById('genForm').classList.add('hidden');
@@ -267,7 +259,6 @@
                 budgetType: document.getElementById('style').value
             };
 
-            // UPDATED: Now points to Render
             fetch('https://ai-travel-p3rw.onrender.com/api/generate_trip', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -276,54 +267,38 @@
             .then(res => res.json())
             .then(data => {
                 const ai = JSON.parse(data.itinerary);
-                
-                // Switch View
                 document.getElementById('mainUI').style.display = 'none';
                 document.getElementById('resultUI').classList.remove('hidden');
                 
-                // Update Headers
                 document.getElementById('rDest').innerText = payload.destination;
-                document.getElementById('rMeta').innerText = `${payload.duration} Day Mission • From ${payload.origin}`;
+                document.getElementById('rMeta').innerText = `${payload.duration} DAYS • FROM ${payload.origin}`;
                 
-                // Update Budget UI
-                document.getElementById('costFlight').innerText = ai.financial_summary ? ai.financial_summary.flights : '-';
-                document.getElementById('costHotel').innerText = ai.financial_summary ? ai.financial_summary.hotels : '-';
-                document.getElementById('costDaily').innerText = ai.financial_summary ? ai.financial_summary.activities : '-';
-                document.getElementById('costTotal').innerText = ai.financial_summary ? ai.financial_summary.total : '-';
+                const fin = ai.costs || ai.financial_summary || ai.financials || {};
+                document.getElementById('costFlight').innerText = fin.flights || fin.airfare || '-';
+                document.getElementById('costHotel').innerText = fin.hotels || fin.lodging || '-';
+                document.getElementById('costDaily').innerText = fin.activities || fin.spending || '-';
+                document.getElementById('costTotal').innerText = fin.total || '-';
 
-                // Build Itinerary
                 document.getElementById('itineraryFlow').innerHTML = ai.itinerary.map(day => `
                     <div class="day-row">
-                        <div class="day-info">
-                            <div class="day-num">${day.day < 10 ? '0'+day.day : day.day}</div>
-                            <div class="day-theme" class="serif">${day.theme || 'The Discovery'}</div>
-                        </div>
+                        <div class="day-num">${day.day < 10 ? '0'+day.day : day.day}</div>
                         <div class="act-group">
-                            <div class="act-block"><small>Dawn</small><p>${day.morning}</p></div>
-                            <div class="act-block"><small>Noon</small><p>${day.afternoon}</p></div>
-                            <div class="act-block"><small>Dusk</small><p>${day.evening}</p></div>
+                            <div class="day-theme">${day.theme || 'Exploration'}</div>
+                            <div class="act-block"><small>MORNING</small><p>${day.morning}</p></div>
+                            <div class="act-block"><small>AFTERNOON</small><p>${day.afternoon}</p></div>
+                            <div class="act-block"><small>EVENING</small><p>${day.evening}</p></div>
                         </div>
                     </div>
                 `).join('');
-                
                 closeModal();
-                window.scrollTo(0,0);
-            })
-            .catch(err => {
-                console.error(err);
-                alert("Failed to connect to the cloud engine.");
-                document.getElementById('genForm').classList.remove('hidden');
-                document.getElementById('loadingUI').classList.add('hidden');
             });
         };
 
         document.getElementById('downloadPdf').onclick = () => {
             html2pdf().from(document.getElementById('resultUI')).set({
-                margin: 20, filename: 'Manifest.pdf', html2canvas: { scale: 2, backgroundColor: '#0a0a0b' }
+                margin: 20, filename: 'Travel_Manifest.pdf', html2canvas: { scale: 2, backgroundColor: '#050505' }
             }).save();
         };
-
-        loadArchive();
     </script>
 </body>
 </html>
