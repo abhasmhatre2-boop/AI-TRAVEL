@@ -213,7 +213,7 @@
         // 2. GOOGLE LOGIN INITIALIZATION
         window.onload = function () {
             google.accounts.id.initialize({
-                client_id: "289134521031-t8f77uqb8nsjska8ikrub4b07gqr4amr.apps.googleusercontent.com.apps.googleusercontent.com", // REPLACE WITH REAL ID
+                client_id: "289134521031-t8f77uqb8nsjska8ikrub4b07gqr4amr.apps.googleusercontent.com", // Fixed suffix
                 callback: handleCredentialResponse
             });
             google.accounts.id.renderButton(
