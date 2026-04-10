@@ -169,22 +169,23 @@
                     <div><label>Guests</label><input type="number" id="passengers" value="1"></div>
                 </div>
 
-                <label>Target Budget (Total)</label>
-<div style="display: flex; gap: 10px;">
-    <select id="currency" style="width: 30%; margin-bottom: 0;">
-        <option value="INR">₹ (INR)</option>
-        <option value="USD">$ (USD)</option>
-        <option value="EUR">€ (EUR)</option>
-    </select>
-    <input type="number" id="budgetAmount" placeholder="e.g. 50000" style="margin-bottom: 0;">
-</div>
+                <label>Financial Allocation</label>
+                <div style="display: flex; gap: 10px; margin-bottom: 30px;">
+                    <select id="currency" style="width: 35%; margin-bottom: 0;">
+                        <option value="INR">₹ (INR)</option>
+                        <option value="USD">$ (USD)</option>
+                        <option value="EUR">€ (EUR)</option>
+                    </select>
+                    <input type="number" id="budgetAmount" placeholder="Target Total" style="margin-bottom: 0;">
+                </div>
 
-<label style="margin-top: 20px;">Travel Priority</label>
-<select id="style">
-    <option value="Budget">Strict Budget (Economic)</option>
-    <option value="Moderate" selected>Balanced (Value for Money)</option>
-    <option value="Luxury">Premium (High-End)</option>
-</select>
+                <label>Travel Priority</label>
+                <select id="style">
+                    <option value="Budget">Strict Budget (Economic)</option>
+                    <option value="Moderate" selected>Balanced (Value for Money)</option>
+                    <option value="Luxury">Premium (High-End)</option>
+                </select>
+
                 <button type="submit" class="btn" style="width: 100%;">Manifest Journey</button>
             </form>
 
@@ -212,7 +213,7 @@
         // 2. GOOGLE LOGIN INITIALIZATION
         window.onload = function () {
             google.accounts.id.initialize({
-                client_id: "YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com", // Replace this
+                client_id: "289134521031-t8f77uqb8nsjska8ikrub4b07gqr4amr.apps.googleusercontent.com.apps.googleusercontent.com", // REPLACE WITH REAL ID
                 callback: handleCredentialResponse
             });
             google.accounts.id.renderButton(
@@ -261,14 +262,14 @@
             document.getElementById('loadingUI').classList.remove('hidden');
 
             const payload = {
-    origin: document.getElementById('origin').value,
-    destination: document.getElementById('dest').value,
-    duration: document.getElementById('dur').value,
-    passengers: document.getElementById('passengers').value,
-    budgetType: document.getElementById('style').value,
-    maxBudget: document.getElementById('budgetAmount').value, // NEW
-    currency: document.getElementById('currency').value      // NEW
-};
+                origin: document.getElementById('origin').value,
+                destination: document.getElementById('dest').value,
+                duration: document.getElementById('dur').value,
+                passengers: document.getElementById('passengers').value,
+                budgetType: document.getElementById('style').value,
+                maxBudget: document.getElementById('budgetAmount').value,
+                currency: document.getElementById('currency').value
+            };
 
             fetch('https://ai-travel-p3rw.onrender.com/api/generate_trip', {
                 method: 'POST',
@@ -277,20 +278,25 @@
             })
             .then(res => res.json())
             .then(data => {
-                const selectedCurrency = document.getElementById('currency').value === 'INR' ? '₹' : '$';
-document.getElementById('costTotal').innerText = `${selectedCurrency}${fin.total || '-'}`;
                 const ai = JSON.parse(data.itinerary);
+                const fin = ai.costs || ai.financial_summary || ai.financials || {};
+                
+                // Determine Currency Symbol
+                const currencyMapping = { 'INR': '₹', 'USD': '$', 'EUR': '€' };
+                const curSym = currencyMapping[payload.currency] || '$';
+
+                // Display Results
                 document.getElementById('mainUI').style.display = 'none';
                 document.getElementById('resultUI').classList.remove('hidden');
                 
                 document.getElementById('rDest').innerText = payload.destination;
                 document.getElementById('rMeta').innerText = `${payload.duration} DAYS • FROM ${payload.origin}`;
                 
-                const fin = ai.costs || ai.financial_summary || ai.financials || {};
-                document.getElementById('costFlight').innerText = fin.flights || fin.airfare || '-';
-                document.getElementById('costHotel').innerText = fin.hotels || fin.lodging || '-';
-                document.getElementById('costDaily').innerText = fin.activities || fin.spending || '-';
-                document.getElementById('costTotal').innerText = fin.total || '-';
+                // Update Budget UI with Currency Symbols
+                document.getElementById('costFlight').innerText = `${curSym}${fin.flights || fin.airfare || '-'}`;
+                document.getElementById('costHotel').innerText = `${curSym}${fin.hotels || fin.lodging || '-'}`;
+                document.getElementById('costDaily').innerText = `${curSym}${fin.activities || fin.spending || '-'}`;
+                document.getElementById('costTotal').innerText = `${curSym}${fin.total || '-'}`;
 
                 document.getElementById('itineraryFlow').innerHTML = ai.itinerary.map(day => `
                     <div class="day-row">
@@ -304,6 +310,7 @@ document.getElementById('costTotal').innerText = `${selectedCurrency}${fin.total
                     </div>
                 `).join('');
                 closeModal();
+                window.scrollTo(0,0);
             });
         };
 
