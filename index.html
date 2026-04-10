@@ -228,13 +228,14 @@
 
         // DASHBOARD ARCHIVE
         function loadArchive() {
-            fetch('http://localhost:5000/api/past_trips').then(res => res.json()).then(data => {
+            // UPDATED: Now points to Render
+            fetch('https://ai-travel-p3rw.onrender.com/api/past_trips').then(res => res.json()).then(data => {
                 document.getElementById('archiveDisplay').innerHTML = data.map(t => `
                     <div class="archive-card">
                         <span class="delete-btn" onclick="removeEntry(${t.id}, event)">REMOVE</span>
                         <small style="color:var(--gold)">${t.duration} DAY MISSION</small>
                         <h3 class="serif" style="margin-top:10px;">${t.destination}</h3>
-                        <p style="font-size:1.1rem; margin-top:20px; color:var(--gold);">${t.currency}${Number(t.total_est_cost).toLocaleString()}</p>
+                        <p style="font-size:1.1rem; margin-top:20px; color:var(--gold);">${t.currency || '₹'}${Number(t.total_est_cost).toLocaleString()}</p>
                     </div>
                 `).join('') || "Archive is empty.";
             });
@@ -243,7 +244,8 @@
         function removeEntry(id, e) {
             e.stopPropagation();
             if(!confirm("Purge this manifest from the vault?")) return;
-            fetch(`http://localhost:5000/api/delete_trip/${id}`, { method: 'DELETE' }).then(() => loadArchive());
+            // UPDATED: Now points to Render
+            fetch(`https://ai-travel-p3rw.onrender.com/api/delete_trip/${id}`, { method: 'DELETE' }).then(() => loadArchive());
         }
 
         // UI ACTIONS
@@ -265,7 +267,8 @@
                 budgetType: document.getElementById('style').value
             };
 
-            fetch('http://localhost:5000/api/generate_trip', {
+            // UPDATED: Now points to Render
+            fetch('https://ai-travel-p3rw.onrender.com/api/generate_trip', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
@@ -283,10 +286,10 @@
                 document.getElementById('rMeta').innerText = `${payload.duration} Day Mission • From ${payload.origin}`;
                 
                 // Update Budget UI
-                document.getElementById('costFlight').innerText = ai.financial_summary.flights;
-                document.getElementById('costHotel').innerText = ai.financial_summary.hotels;
-                document.getElementById('costDaily').innerText = ai.financial_summary.activities;
-                document.getElementById('costTotal').innerText = ai.financial_summary.total;
+                document.getElementById('costFlight').innerText = ai.financial_summary ? ai.financial_summary.flights : '-';
+                document.getElementById('costHotel').innerText = ai.financial_summary ? ai.financial_summary.hotels : '-';
+                document.getElementById('costDaily').innerText = ai.financial_summary ? ai.financial_summary.activities : '-';
+                document.getElementById('costTotal').innerText = ai.financial_summary ? ai.financial_summary.total : '-';
 
                 // Build Itinerary
                 document.getElementById('itineraryFlow').innerHTML = ai.itinerary.map(day => `
@@ -305,6 +308,12 @@
                 
                 closeModal();
                 window.scrollTo(0,0);
+            })
+            .catch(err => {
+                console.error(err);
+                alert("Failed to connect to the cloud engine.");
+                document.getElementById('genForm').classList.remove('hidden');
+                document.getElementById('loadingUI').classList.add('hidden');
             });
         };
 
