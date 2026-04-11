@@ -1,7 +1,7 @@
 """
-TRIP.AI - ENTERPRISE CLOUD EDITION (V6.0)
+TRIP.AI - STRICT LIVE DATA EDITION (V6.1)
 Architecture: Flask + Groq Llama 3.1 + TiDB Cloud (MySQL)
-Features: Live Flights, Live Hotels, Weather, Route Coordinates, Vault Persistence
+Features: NO FAKE DATA. ONLY LIVE MARKET PRICES.
 """
 
 import os
@@ -13,23 +13,27 @@ from flask_cors import CORS
 from groq import Groq
 import mysql.connector
 from mysql.connector import Error
+from dotenv import load_dotenv
+
+# Load Environment Variables from .env file
+load_dotenv()
 
 # --- 1. SYSTEM LOGGING & CONFIG ---
 logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger("CLOUD_ENGINE")
+logger = logging.getLogger("LIVE_ENGINE")
 
 app = Flask(__name__)
 # Enable CORS for live deployment
 CORS(app)
 
 # --- 2. CLOUD ENVIRONMENT VARIABLES ---
-GROQ_API_KEY = os.getenv("GROQ_API_KEY", "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")
-DB_HOST = os.getenv("DB_HOST", "gateway01.ap-southeast-1.prod.aws.tidbcloud.com")
-DB_USER = os.getenv("DB_USER", "3ckvtyMQiMcjj6o.root")
-DB_PASS = os.getenv("DB_PASS", "W1F1QQ3NPZW4KWKR")
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+DB_HOST = os.getenv("DB_HOST")
+DB_USER = os.getenv("DB_USER")
+DB_PASS = os.getenv("DB_PASS")
 DB_NAME = os.getenv("DB_NAME", "test")
 DB_PORT = os.getenv("DB_PORT", "4000")
-SERPAPI_KEY = os.getenv("SERPAPI_KEY") # Add this to Render!
+SERPAPI_KEY = os.getenv("SERPAPI_KEY")
 
 # Initialize AI Client
 client = Groq(api_key=GROQ_API_KEY)
@@ -52,10 +56,10 @@ def get_db_connection():
         logger.error(f"DATABASE CONNECTION FAILED: {e}")
         return None
 
-# --- 4. LIVE DATA ENGINES ---
+# --- 4. STRICT LIVE DATA ENGINES (NO FAKES ALLOWED) ---
 def get_live_flight_price(origin, destination, date):
     if not SERPAPI_KEY:
-        return "N/A", "#"
+        return "Live Price Unavailable", "#"
         
     url = "https://serpapi.com/search.json"
     params = {
@@ -71,23 +75,27 @@ def get_live_flight_price(origin, destination, date):
     try:
         response = requests.get(url, params=params).json()
         best_flight = response.get('best_flights', [{}])[0]
-        price = best_flight.get('price', 'N/A')
+        price = best_flight.get('price')
+        
+        if not price:
+            return "Live Price Unavailable", "#"
+            
         booking_url = f"https://www.google.com/travel/flights?q=Flights%20to%20{destination}%20from%20{origin}%20on%20{date}"
-        return price, booking_url
+        return f"₹{price}", booking_url
     except Exception as e:
         logger.error(f"Flight API Error: {e}")
-        return "N/A", "#"
+        return "Live Price Unavailable", "#"
 
 def get_live_hotel_price(destination, check_in_date):
     if not SERPAPI_KEY:
-        return "N/A"
+        return "Live Price Unavailable"
         
     url = "https://serpapi.com/search.json"
     params = {
         "engine": "google_hotels",
         "q": f"Hotels in {destination}",
         "check_in_date": check_in_date,
-        "check_out_date": check_in_date, # Simplified for MVP single night metric
+        "check_out_date": check_in_date,
         "currency": "INR",
         "api_key": SERPAPI_KEY
     }
@@ -95,11 +103,14 @@ def get_live_hotel_price(destination, check_in_date):
     try:
         response = requests.get(url, params=params).json()
         # Grab the price of the first recommended property
-        price = response.get('properties', [{}])[0].get('total_rate', 'N/A')
-        return price
+        price = response.get('properties', [{}])[0].get('total_rate')
+        
+        if not price:
+            return "Live Price Unavailable"
+        return f"₹{price}"
     except Exception as e:
         logger.error(f"Hotel API Error: {e}")
-        return "N/A"
+        return "Live Price Unavailable"
 
 def get_weather_and_coords(city_name):
     """Fetches weather and coordinates (Lat/Lon) for map animations."""
@@ -122,31 +133,11 @@ def get_weather_and_coords(city_name):
         logger.error(f"Weather/Geo Error: {e}")
         return "Standard conditions", 0, 0
 
-def calculate_trip_economics(style, duration, passengers):
-    """Fallback simulated market prices."""
-    tiers = {
-        "Budget": {"air": 35000, "hotel": 1500, "daily": 2000},
-        "Moderate": {"air": 75000, "hotel": 7500, "daily": 6000},
-        "Luxury": {"air": 220000, "hotel": 35000, "daily": 25000}
-    }
-    config = tiers.get(style, tiers["Moderate"])
-    
-    air_total = config["air"] * passengers
-    hotel_total = config["hotel"] * duration
-    spend_total = config["daily"] * duration
-    
-    return {
-        "airfare": f"{air_total:,}",
-        "lodging": f"{hotel_total:,}",
-        "spending": f"{spend_total:,}",
-        "total": f"{air_total + hotel_total + spend_total:,}"
-    }
-
 # --- 5. PRIMARY API ROUTES ---
 
 @app.route('/api/health', methods=['GET'])
 def health():
-    return jsonify({"status": "active", "engine": "Llama 3.1 8B"}), 200
+    return jsonify({"status": "active", "engine": "Llama 3.1 8B Strict Live"}), 200
 
 @app.route('/api/generate_trip', methods=['POST'])
 def generate_trip():
@@ -158,31 +149,29 @@ def generate_trip():
     style = data.get('budgetType', 'Moderate')
     travel_date = data.get('departureDate')
 
-    logger.info(f"STARTING LIVE MANIFEST: {origin} -> {dest} for {pax} pax")
+    logger.info(f"STARTING STRICT LIVE MANIFEST: {origin} -> {dest} for {pax} pax")
 
-    # STEP A: REAL-TIME MARKET DISCOVERY (Flights, Hotels, Weather, Coords)
+    # STRICT STEP A: REAL-TIME MARKET DISCOVERY
     real_flight_price, booking_link = get_live_flight_price(origin, dest, travel_date)
     real_hotel_price = get_live_hotel_price(dest, travel_date)
     
     dest_weather, dest_lat, dest_lon = get_weather_and_coords(dest)
     _, orig_lat, orig_lon = get_weather_and_coords(origin)
 
-    # STEP B: SECONDARY ECONOMICS
-    finances = calculate_trip_economics(style, dur, pax)
-    if real_flight_price != "N/A":
-        finances['airfare'] = real_flight_price
-    if real_hotel_price != "N/A":
-        # Multiply daily hotel rate by duration
-        try:
-            clean_price = int(str(real_hotel_price).replace(',', '').replace('₹', '').strip())
-            finances['lodging'] = f"{clean_price * dur:,}"
-        except:
-            finances['lodging'] = real_hotel_price
-
-    # STEP C: AI PROMPT ENGINEERING
+    # STRICT STEP B: AI PROMPT (FORCED TO USE REAL NUMBERS)
     prompt = f"""
-    You are a luxury travel agent. Design a bespoke {dur}-day itinerary for {dest} starting from {origin}.
+    You are an enterprise travel agent. Design a bespoke {dur}-day itinerary for {dest} starting from {origin} for {pax} travelers.
     Travel Style: {style}. Local Weather: {dest_weather}.
+    
+    CRITICAL LIVE MARKET DATA:
+    - Live Flight Price: {real_flight_price}
+    - Live Hotel Price (per night): {real_hotel_price}
+    
+    INSTRUCTIONS:
+    1. Do NOT invent fake prices. If the data says "Live Price Unavailable", output exactly "Live Price Unavailable".
+    2. If a real Hotel Price is provided, multiply it by {dur} days for the total hotel budget.
+    3. Estimate a realistic "Daily Activities" budget based on the '{style}' travel style.
+    4. Calculate the Final Total mathematically based ONLY on the live prices provided + your estimated activities budget.
     
     Return ONLY a JSON object with this exact structure:
     {{
@@ -190,9 +179,9 @@ def generate_trip():
       "booking_url": "{booking_link}",
       "weather_advice": "Specific clothing advice based on {dest_weather}",
       "financials": {{
-        "flights": "{finances['airfare']}",
-        "hotels": "{finances['lodging']}",
-        "activities": "{finances['spending']}",
+        "flights": "{real_flight_price}",
+        "hotels": "Calculated total hotel price OR 'Live Price Unavailable'",
+        "activities": "Estimated activities budget",
         "total": "Calculated Total Budget"
       }},
       "itinerary": [
@@ -211,7 +200,7 @@ def generate_trip():
         # Step D: AI Inference
         response = client.chat.completions.create(
             messages=[
-                {"role": "system", "content": "You are a professional travel API. Only return valid JSON."},
+                {"role": "system", "content": "You are a professional travel API. Only return valid JSON. Never invent fake flight/hotel data."},
                 {"role": "user", "content": prompt}
             ],
             model="llama-3.1-8b-instant",
