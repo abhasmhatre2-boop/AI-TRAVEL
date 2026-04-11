@@ -13,6 +13,23 @@
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@200;400;700&family=Playfair+Display:ital,wght@0,700;1,700&display=swap" rel="stylesheet">
 
     <style>
+        /* --- AUTOCOMPLETE STYLING --- */
+.suggestion-box {
+    position: absolute;
+    background: #111;
+    border: 1px solid var(--border);
+    width: 100%;
+    z-index: 3000;
+    max-height: 200px;
+    overflow-y: auto;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+}
+
+.suggestion-item:hover {
+    background: rgba(212, 175, 55, 0.1);
+}
+
+#genForm div { position: relative; } /* Keeps the boxes aligned to the inputs */
         input[type="date"]::-webkit-calendar-picker-indicator {
             filter: invert(70%) sepia(50%) saturate(500%) hue-rotate(10deg);
             cursor: pointer;
@@ -554,6 +571,59 @@
                 margin: 20, filename: 'Travel_Manifest.pdf', html2canvas: { scale: 2, backgroundColor: '#050505' }
             }).save();
         };
+            // --- NEW: SMART AUTOCOMPLETE ENGINE ---
+function setupAutocomplete(inputId, suggestionBoxId) {
+    // Create the suggestion box if it doesn't exist in HTML
+    let input = document.getElementById(inputId);
+    let box = document.getElementById(suggestionBoxId);
+    
+    // If the box doesn't exist, create it dynamically
+    if (!box) {
+        box = document.createElement('div');
+        box.id = suggestionBoxId;
+        box.className = 'suggestion-box hidden';
+        input.parentNode.appendChild(box);
+    }
+
+    input.addEventListener('input', () => {
+        const query = input.value.trim();
+        if (query.length < 2) {
+            box.classList.add('hidden');
+            return;
+        }
+
+        // Fetching Location Data from Open-Meteo
+        fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${query}&count=5&language=en&format=json`)
+            .then(res => res.json())
+            .then(data => {
+                if (!data.results) {
+                    box.classList.add('hidden');
+                    return;
+                }
+
+                // The "Airport Aware" UI with Airplane icons
+                box.innerHTML = data.results.map(city => `
+                    <div class="suggestion-item" style="padding:12px; cursor:pointer; border-bottom:1px solid #222;" 
+                         onclick="selectCity('${inputId}', '${suggestionBoxId}', '${city.name}')">
+                        <span style="color: var(--gold); font-weight: bold; margin-right: 8px;">✈</span> 
+                        <span style="color: white; font-size:0.9rem;">${city.name}</span>
+                        <span style="opacity:0.4; font-size:0.65rem; margin-left: 8px;">
+                            ${city.admin1 || ''} | ${city.country}
+                        </span>
+                    </div>
+                `).join('');
+                
+                box.classList.remove('hidden');
+            });
+    });
+}
+
+// Helper function to handle the selection
+function selectCity(inputId, boxId, cityName) {
+    document.getElementById(inputId).value = cityName.toUpperCase();
+    document.getElementById(boxId).classList.add('hidden');
+}
     </script> 
+
 </body>
 </html>
