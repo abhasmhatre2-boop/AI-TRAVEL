@@ -60,21 +60,67 @@
         .vault-btn:hover { background: var(--gold); color: #000; }
 
         /* HERO SECTION */
+        /* --- CINEMATIC AURORA HERO --- */
         .hero {
-            height: 100vh; display: flex; flex-direction: column;
+            position: relative;
+            height: 100vh; 
+            display: flex; flex-direction: column;
             justify-content: center; align-items: center; text-align: center;
-            background: radial-gradient(circle at center, #111 0%, #000 100%);
+            overflow: hidden; /* Keeps the glowing orbs inside the section */
         }
+        
+        .hero-content {
+            position: relative;
+            z-index: 2; /* Keeps the text in front of the background */
+            display: flex; flex-direction: column; align-items: center;
+        }
+
         .hero h1 { font-size: clamp(3rem, 10vw, 7rem); line-height: 1; margin-bottom: 20px; }
         .hero p { color: var(--gold); letter-spacing: 8px; text-transform: uppercase; font-size: 0.75rem; margin-bottom: 40px; }
 
-        .btn {
-            padding: 18px 45px; border: 1px solid var(--gold);
-            background: transparent; color: var(--gold); cursor: pointer;
-            text-transform: uppercase; letter-spacing: 3px; font-size: 0.7rem;
-            transition: 0.4s ease;
+        /* The Animated Background Layer */
+        .hero-bg {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: #020202; /* Deepest black */
+            z-index: 0;
         }
-        .btn:hover { background: var(--gold); color: #000; box-shadow: 0 0 30px rgba(212, 175, 55, 0.3); }
+
+        /* The Glowing Orbs */
+        .orb {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(100px); /* Creates the soft, smokey aurora effect */
+            opacity: 0.5;
+            animation: drift 20s infinite alternate ease-in-out;
+        }
+
+        .orb-1 {
+            width: 45vw; height: 45vw;
+            background: rgba(212, 175, 55, 0.15); /* Trip.AI Gold */
+            top: -10%; left: -10%;
+        }
+
+        .orb-2 {
+            width: 55vw; height: 55vw;
+            background: rgba(58, 130, 246, 0.12); /* Subtle Globe Atmosphere Blue */
+            bottom: -20%; right: -10%;
+            animation-delay: -5s; /* Offsets the animation so they don't move identically */
+        }
+
+        .orb-3 {
+            width: 35vw; height: 35vw;
+            background: rgba(212, 175, 55, 0.08); /* Faint Gold Center */
+            top: 40%; left: 50%;
+            transform: translate(-50%, -50%);
+            animation-duration: 25s;
+        }
+
+        /* The Drift Animation */
+        @keyframes drift {
+            0% { transform: translate(0px, 0px) scale(1); }
+            50% { transform: translate(8vw, 4vh) scale(1.05); }
+            100% { transform: translate(-4vw, 8vh) scale(0.95); }
+        }
 
         /* GLOBE & CONTENT */
         .globe-container { width: 100%; height: 700px; background: #000; border-top: 1px solid var(--border); }
@@ -221,10 +267,19 @@
     </nav>
 
     <div id="mainUI">
-        <section class="hero">
-            <p id="txt-subhero">Intelligence in Global Travel</p>
-            <h1 id="txt-hero">The World,<br>By Design.</h1>
-            <button class="btn open-modal" id="txt-btn-main">Begin Configuration</button>
+       <section class="hero">
+            <div class="hero-bg">
+                <div class="orb orb-1"></div>
+                <div class="orb orb-2"></div>
+                <div class="orb orb-3"></div>
+            </div>
+            
+            <div class="hero-content">
+                <p id="txt-subhero">Intelligence in Global Travel</p>
+                <h1 id="txt-hero">The World,<br>By Design.</h1>
+                <button class="btn open-modal" id="txt-btn-main">Begin Configuration</button>
+                <p style="margin-top: 60px; font-size: 0.6rem; opacity: 0.5; animation: corePulse 2s infinite;">Scroll to explore the engine</p>
+            </div>
         </section>
 
         <section class="globe-container">
@@ -254,6 +309,7 @@
             </div>
 
             <div style="display: flex; gap: 20px;">
+
                 <button id="downloadPdf" class="btn">Export PDF</button>
                 <button class="btn" style="border-color: #333; color: #555;" onclick="location.reload()">Return</button>
             </div>
