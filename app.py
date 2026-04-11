@@ -1,7 +1,7 @@
 """
-TRIP.AI - STRICT LIVE DATA EDITION (V6.1)
+TRIP.AI - STRICT LIVE DATA ENGINE (V6.1)
 Architecture: Flask + Groq Llama 3.1 + TiDB Cloud (MySQL)
-Features: NO FAKE DATA. ONLY LIVE MARKET PRICES.
+Rules: NO FAKE DATA. NO FALLBACKS. ONLY LIVE MARKET PRICES.
 """
 
 import os
@@ -15,7 +15,7 @@ import mysql.connector
 from mysql.connector import Error
 from dotenv import load_dotenv
 
-# Load Environment Variables from .env file
+# Load Environment Variables
 load_dotenv()
 
 # --- 1. SYSTEM LOGGING & CONFIG ---
@@ -23,7 +23,6 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("LIVE_ENGINE")
 
 app = Flask(__name__)
-# Enable CORS for live deployment
 CORS(app)
 
 # --- 2. CLOUD ENVIRONMENT VARIABLES ---
@@ -56,40 +55,50 @@ def get_db_connection():
         logger.error(f"DATABASE CONNECTION FAILED: {e}")
         return None
 
-# --- 4. STRICT LIVE DATA ENGINES (NO FAKES ALLOWED) ---
-def get_live_flight_price(origin, destination, date):
-    if not SERPAPI_KEY:
-        return "Live Price Unavailable", "#"
-        
+# --- 4. STRICT LIVE DATA ENGINES ---
+
+def get_iata_code(query):
+    """Translates city/country names into valid IATA Airport IDs via SerpApi."""
+    if not SERPAPI_KEY: return query
+    url = "https://serpapi.com/locations.json"
+    params = {"q": query, "limit": 1, "api_key": SERPAPI_KEY}
+    try:
+        response = requests.get(url, params=params).json()
+        if isinstance(response, list) and len(response) > 0:
+            return response[0].get('id', query)
+        return query
+    except Exception as e:
+        logger.error(f"IATA Resolver Error: {e}")
+        return query
+
+def get_live_flight_price(origin_id, dest_id, date):
+    """Scrapes real-time flight data. NO FAKES."""
+    if not SERPAPI_KEY: return "Live Price Unavailable", "#"
     url = "https://serpapi.com/search.json"
     params = {
         "engine": "google_flights",
-        "departure_id": origin,
-        "arrival_id": destination,
+        "departure_id": origin_id,
+        "arrival_id": dest_id,
         "outbound_date": date,
         "currency": "INR",
         "hl": "en",
         "api_key": SERPAPI_KEY
     }
-
     try:
         response = requests.get(url, params=params).json()
-        best_flight = response.get('best_flights', [{}])[0]
-        price = best_flight.get('price')
+        best_flights = response.get('best_flights')
+        if not best_flights: return "Live Price Unavailable", "#"
         
-        if not price:
-            return "Live Price Unavailable", "#"
-            
-        booking_url = f"https://www.google.com/travel/flights?q=Flights%20to%20{destination}%20from%20{origin}%20on%20{date}"
-        return f"₹{price}", booking_url
+        price = best_flights[0].get('price')
+        booking_url = f"https://www.google.com/travel/flights?q=Flights%20to%20{dest_id}%20from%20{origin_id}%20on%20{date}"
+        return f"₹{price:,}" if price else "Live Price Unavailable", booking_url
     except Exception as e:
         logger.error(f"Flight API Error: {e}")
         return "Live Price Unavailable", "#"
 
 def get_live_hotel_price(destination, check_in_date):
-    if not SERPAPI_KEY:
-        return "Live Price Unavailable"
-        
+    """Scrapes real-time hotel rates. NO FAKES."""
+    if not SERPAPI_KEY: return "Live Price Unavailable"
     url = "https://serpapi.com/search.json"
     params = {
         "engine": "google_hotels",
@@ -99,166 +108,134 @@ def get_live_hotel_price(destination, check_in_date):
         "currency": "INR",
         "api_key": SERPAPI_KEY
     }
-    
     try:
         response = requests.get(url, params=params).json()
-        # Grab the price of the first recommended property
-        price = response.get('properties', [{}])[0].get('total_rate')
+        props = response.get('properties')
+        if not props: return "Live Price Unavailable"
         
-        if not price:
-            return "Live Price Unavailable"
-        return f"₹{price}"
+        price = props[0].get('total_rate')
+        return f"₹{price:,}" if price else "Live Price Unavailable"
     except Exception as e:
         logger.error(f"Hotel API Error: {e}")
         return "Live Price Unavailable"
 
 def get_weather_and_coords(city_name):
-    """Fetches weather and coordinates (Lat/Lon) for map animations."""
+    """Fetches weather and GPS coordinates for mapping."""
     try:
         geo_url = f"https://geocoding-api.open-meteo.com/v1/search?name={city_name}&count=1&language=en&format=json"
         geo_res = requests.get(geo_url).json()
+        if not geo_res.get('results'): return "Weather unavailable", 0, 0
         
-        if not geo_res.get('results'):
-            return "Weather unavailable", 0, 0
-            
-        lat = geo_res['results'][0]['latitude']
-        lon = geo_res['results'][0]['longitude']
-
-        weather_url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current_weather=true"
-        w_res = requests.get(weather_url).json()
+        res = geo_res['results'][0]
+        lat, lon = res['latitude'], res['longitude']
         
+        w_url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current_weather=true"
+        w_res = requests.get(w_url).json()
         temp = w_res['current_weather']['temperature']
         return f"{temp}°C", lat, lon
-    except Exception as e:
-        logger.error(f"Weather/Geo Error: {e}")
+    except:
         return "Standard conditions", 0, 0
 
 # --- 5. PRIMARY API ROUTES ---
 
-@app.route('/api/health', methods=['GET'])
-def health():
-    return jsonify({"status": "active", "engine": "Llama 3.1 8B Strict Live"}), 200
-
 @app.route('/api/generate_trip', methods=['POST'])
 def generate_trip():
     data = request.json
-    origin = data.get('origin', 'BOM')
-    dest = data.get('destination', 'DXB')
+    origin_name = data.get('origin', 'Mumbai')
+    dest_name = data.get('destination', 'Dubai')
     dur = int(data.get('duration', 3))
     pax = int(data.get('passengers', 1))
     style = data.get('budgetType', 'Moderate')
     travel_date = data.get('departureDate')
 
-    logger.info(f"STARTING STRICT LIVE MANIFEST: {origin} -> {dest} for {pax} pax")
+    logger.info(f"INITIATING MANIFEST: {origin_name} -> {dest_name}")
 
-    # STRICT STEP A: REAL-TIME MARKET DISCOVERY
-    real_flight_price, booking_link = get_live_flight_price(origin, dest, travel_date)
-    real_hotel_price = get_live_hotel_price(dest, travel_date)
-    
-    dest_weather, dest_lat, dest_lon = get_weather_and_coords(dest)
-    _, orig_lat, orig_lon = get_weather_and_coords(origin)
+    # RESOLVE IATA CODES (MUMBAI -> BOM)
+    origin_id = get_iata_code(origin_name)
+    dest_id = get_iata_code(dest_name)
 
-    # STRICT STEP B: AI PROMPT (FORCED TO USE REAL NUMBERS)
+    # GATHER LIVE DATA
+    real_flight, booking_url = get_live_flight_price(origin_id, dest_id, travel_date)
+    real_hotel = get_live_hotel_price(dest_name, travel_date)
+    dest_weather, dest_lat, dest_lon = get_weather_and_coords(dest_name)
+    _, orig_lat, orig_lon = get_weather_and_coords(origin_name)
+
+    # AI PROMPT (STRICT DATA ENFORCEMENT)
     prompt = f"""
-    You are an enterprise travel agent. Design a bespoke {dur}-day itinerary for {dest} starting from {origin} for {pax} travelers.
-    Travel Style: {style}. Local Weather: {dest_weather}.
+    Role: Enterprise Travel Architect.
+    Mission: Create a {dur}-day {style} itinerary for {dest_name} (from {origin_name}) for {pax} travelers.
+    Weather: {dest_weather}.
     
-    CRITICAL LIVE MARKET DATA:
-    - Live Flight Price: {real_flight_price}
-    - Live Hotel Price (per night): {real_hotel_price}
+    MANDATORY LIVE MARKET DATA:
+    - Base Flight Price: {real_flight}
+    - Base Hotel/Night: {real_hotel}
     
-    INSTRUCTIONS:
-    1. Do NOT invent fake prices. If the data says "Live Price Unavailable", output exactly "Live Price Unavailable".
-    2. If a real Hotel Price is provided, multiply it by {dur} days for the total hotel budget.
-    3. Estimate a realistic "Daily Activities" budget based on the '{style}' travel style.
-    4. Calculate the Final Total mathematically based ONLY on the live prices provided + your estimated activities budget.
+    RULES:
+    1. If data is 'Live Price Unavailable', use that exact string in JSON.
+    2. Calculate total hotel cost as (Hotel Price * {dur}).
+    3. Calculate Grand Total based ONLY on real prices + realistic activity estimates.
     
-    Return ONLY a JSON object with this exact structure:
+    RETURN ONLY JSON:
     {{
       "coordinates": {{"origin": [{orig_lat}, {orig_lon}], "dest": [{dest_lat}, {dest_lon}]}},
-      "booking_url": "{booking_link}",
-      "weather_advice": "Specific clothing advice based on {dest_weather}",
+      "booking_url": "{booking_url}",
+      "weather_advice": "Advice for {dest_weather}",
       "financials": {{
-        "flights": "{real_flight_price}",
-        "hotels": "Calculated total hotel price OR 'Live Price Unavailable'",
-        "activities": "Estimated activities budget",
-        "total": "Calculated Total Budget"
+        "flights": "{real_flight}",
+        "hotels": "Total calculated hotel cost",
+        "activities": "Estimate for {style} style",
+        "total": "Calculated total in INR"
       }},
-      "itinerary": [
-        {{
-          "day": 1,
-          "theme": "A creative title",
-          "morning": "Activity description",
-          "afternoon": "Activity description",
-          "evening": "Activity description"
-        }}
-      ]
+      "itinerary": [{{ "day": 1, "theme": "...", "morning": "...", "afternoon": "...", "evening": "..." }}]
     }}
     """
 
     try:
-        # Step D: AI Inference
         response = client.chat.completions.create(
-            messages=[
-                {"role": "system", "content": "You are a professional travel API. Only return valid JSON. Never invent fake flight/hotel data."},
-                {"role": "user", "content": prompt}
-            ],
+            messages=[{"role": "system", "content": "Professional API. JSON output only. No fakes."}, {"role": "user", "content": prompt}],
             model="llama-3.1-8b-instant",
             response_format={"type": "json_object"}
         )
-        
         itinerary_json = response.choices[0].message.content
         
-        # Step E: Save to TiDB Cloud Database
+        # PERSIST TO CLOUD VAULT (TiDB)
         db = get_db_connection()
         if db:
             cursor = db.cursor()
-            query = "INSERT INTO trips (destination, duration, budget_type, itinerary) VALUES (%s, %s, %s, %s)"
-            cursor.execute(query, (dest, dur, style, itinerary_json))
+            cursor.execute("INSERT INTO trips (destination, duration, budget_type, itinerary) VALUES (%s, %s, %s, %s)", (dest_name, dur, style, itinerary_json))
             db.commit()
-            cursor.close()
             db.close()
-            logger.info("Trip successfully archived to TiDB Cloud.")
 
-        return jsonify({
-            "status": "success", 
-            "itinerary": itinerary_json, 
-            "raw_weather": dest_weather 
-        })
+        return jsonify({"status": "success", "itinerary": itinerary_json, "raw_weather": dest_weather})
     except Exception as e:
         logger.error(f"ENGINE ERROR: {e}")
         return jsonify({"status": "error", "message": str(e)}), 500
 
 @app.route('/api/past_trips', methods=['GET'])
 def get_past_trips():
-    """Fetches the latest itineraries from the database for the Dashboard."""
     db = get_db_connection()
     if not db: return jsonify([])
     try:
         cursor = db.cursor(dictionary=True)
         cursor.execute("SELECT id, destination, duration, created_at FROM trips ORDER BY created_at DESC LIMIT 6")
         rows = cursor.fetchall()
-        cursor.close()
         db.close()
         return jsonify(rows)
-    except Exception as e:
-        logger.error(f"DB FETCH ERROR: {e}")
+    except:
         return jsonify([])
 
 @app.route('/api/delete_trip/<int:trip_id>', methods=['DELETE'])
 def delete_trip(trip_id):
-    """Removes a specific manifest from the database."""
     db = get_db_connection()
     if not db: return jsonify({"status": "error"})
     try:
         cursor = db.cursor()
         cursor.execute("DELETE FROM trips WHERE id = %s", (trip_id,))
         db.commit()
-        cursor.close()
         db.close()
         return jsonify({"status": "success"})
-    except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
+    except:
+        return jsonify({"status": "error"}), 500
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
