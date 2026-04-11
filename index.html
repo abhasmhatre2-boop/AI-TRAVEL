@@ -68,7 +68,17 @@
             justify-content: center; align-items: center; text-align: center;
             overflow: hidden; /* Keeps the glowing orbs inside the section */
         }
-        
+        /* --- RESTORED BUTTON CSS --- */
+.btn {
+    padding: 18px 45px; border: 1px solid var(--gold);
+    background: transparent; color: var(--gold); cursor: pointer;
+    text-transform: uppercase; letter-spacing: 3px; font-size: 0.7rem;
+    transition: 0.4s ease;
+}
+.btn:hover { 
+    background: var(--gold); color: #000; 
+    box-shadow: 0 0 30px rgba(212, 175, 55, 0.3); 
+}
         .hero-content {
             position: relative;
             z-index: 2; /* Keeps the text in front of the background */
@@ -278,7 +288,7 @@
                 <p id="txt-subhero">Intelligence in Global Travel</p>
                 <h1 id="txt-hero">The World,<br>By Design.</h1>
                 <button class="btn open-modal" id="txt-btn-main">Begin Configuration</button>
-                <p style="margin-top: 60px; font-size: 0.6rem; opacity: 0.5; animation: corePulse 2s infinite;">Scroll to explore the engine</p>
+                <p style="margin-top: 60px; font-size: 0.6rem; color: var(--gold); opacity: 0.5; letter-spacing: 6px;">SCROLL TO EXPLORE THE ENGINE</p>
             </div>
         </section>
 
@@ -397,25 +407,23 @@
         }
 
         window.onload = function () {
-            google.accounts.id.initialize({
-                client_id: "289134521031-t8f77uqb8nsjska8ikrub4b07gqr4amr.apps.googleusercontent.com",
-                callback: handleCredentialResponse
-            });
-            google.accounts.id.renderButton(
-                document.getElementById("google-login-btn"),
-                { theme: "outline", size: "large" }
-            );
+    // 1. Keep the Google Login initialization
+    google.accounts.id.initialize({
+        client_id: "289134521031-t8f77uqb8nsjska8ikrub4b07gqr4amr.apps.googleusercontent.com",
+        callback: handleCredentialResponse
+    });
+    google.accounts.id.renderButton(
+        document.getElementById("google-login-btn"),
+        { theme: "outline", size: "large" }
+    );
 
-            fetch('https://ipapi.co/json/')
-                .then(res => res.json())
-                .then(data => {
-                    if(data.city) {
-                        document.getElementById('origin').value = data.city.toUpperCase();
-                        const curMap = { 'INR': '₹', 'USD': '$', 'EUR': '€' };
-                        if(data.currency) document.getElementById('currency').value = curMap[data.currency] || '₹';
-                    }
-                });
-        };
+    // 2. LOCATION FETCH DELETED
+    // This ensures the Origin field starts empty every time.
+
+    // 3. Keep the Autocomplete initialization
+    setupAutocomplete('origin', 'origin-suggestions');
+    setupAutocomplete('dest', 'dest-suggestions');
+};
 
         function handleCredentialResponse(response) {
             alert("Login Successful! Authenticated via Google.");
